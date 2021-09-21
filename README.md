@@ -1,1 +1,1 @@
-# automated-enum
+# Automated Enum
