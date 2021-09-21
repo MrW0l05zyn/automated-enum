@@ -3,7 +3,8 @@
 ## Dependencias
 
 + nmap
++ seclists
 
 ```bash
-sudo apt install nmap seclist
+sudo apt install nmap seclists
 ```
