@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # variables
-target=$1
 mainDirectory='automatedEnum'
 workingDirectory='working'
 topUDPPorts='53,67,68,69,111,123,135,137,138,139,161,162,445,500,514,520,631,998,1434,1701,1900,4500,5353,49152,49154'
@@ -23,29 +22,50 @@ function banner(){
     echo '                             [ Author : MrW0l05zyn | Version : 0.1 ]                               '
 }
 
-# función de escaneo con Nmap
-function nmapScan(){
-    local directory='nmap'
+function usage() { 
+    echo -e "\nUsage:"
+    echo -e "\t$0 -t <TARGET> [-s <SERVICE>]"
 
-    # creación de directorio Nmap
-    directoryCreation $directory
+    echo -e "\nOptions:"
+    echo -e "\t-t <TARGET>\tTarget/Host IP address"
+    echo -e "\t-s <SERVICE>\tService name: HTTP|SMB|SMTP|SNMP|SSH"
+    echo -e "\t-h \t\tShows instructions on how to use the tool"
 
-    # TCP all port scan
-    echo -e "\n$GREEN[Nmap - TCP all port scan]$NC\n"
-    sudo nmap -sS -p- --open -n --min-rate 5000 -Pn $target -oN $mainDirectory/$directory/all-tcp-ports.txt -oG $mainDirectory/$workingDirectory/tcp-ports
-    nmapPortsExtract 'TCP'
+    echo -e "\nExamples:"
+    echo -e "\t$0 -t X.X.X.X"
+    echo -e "\t$0 -t X.X.X.X -s HTTP"    
 
-    # UDP main port scan
-    echo -e "\n$GREEN[Nmap - UDP main port scan]$NC\n"
-    sudo nmap -sU -p $topUDPPorts --open -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports
-    nmapPortsExtract 'UDP'
-    
-    # identificación de servicios
-    if [ -n "$TCPPortsTarget" ]; then
-        echo -e "\n$GREEN[Nmap - Identification of services and versions of TCP ports]$NC\n"
-        nmap -sC -sV -p $TCPPortsTarget -Pn $target -oN $mainDirectory/$directory/tcp-ports-services.txt
-    fi        
+    exit 0
 }
+
+# función que realiza validación del parámetro "(-t) target"
+function targetParameterValidation(){
+    if [[ ! $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
+        usage
+    fi
+}
+
+# parámetros
+if [ $# -eq 0 ]; then
+    banner
+    usage
+fi
+while getopts ":t:s:h" arg; do
+    case $arg in
+        t) # target
+            target=${OPTARG}
+            targetParameterValidation $target
+            ;;
+        s) # service
+            service=${OPTARG}      
+            ;;
+        h | *) # usage
+            usage
+            exit 0
+            ;;
+    esac
+done
 
 # función de creación de directorios
 function directoryCreation(){
@@ -64,14 +84,41 @@ function nmapPortsExtract(){
     esac    
 }
 
+# función de escaneo con Nmap
+function nmapScan(){
+    local directory='nmap'
+
+    # creación de directorio Nmap
+    directoryCreation $directory
+
+    # TCP all port scan
+    echo -e "\n${GREEN}[Nmap - TCP all port scan]${NC}\n"
+    sudo nmap -sS -p- --open -n --min-rate 5000 -Pn $target -oN $mainDirectory/$directory/all-tcp-ports.txt -oG $mainDirectory/$workingDirectory/tcp-ports
+    nmapPortsExtract 'TCP'
+
+    # UDP main port scan
+    echo -e "\n${GREEN}[Nmap - UDP main port scan]${NC}\n"
+    sudo nmap -sU -p $topUDPPorts --open -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports
+    nmapPortsExtract 'UDP'
+    
+    # identificación de servicios
+    if [ -n "$TCPPortsTarget" ]; then
+        echo -e "\n${GREEN}[Nmap - Identification of services and versions of TCP ports]${NC}\n"
+        nmap -sC -sV -p $TCPPortsTarget -Pn $target -oN $mainDirectory/$directory/tcp-ports-services.txt
+    fi        
+}
+
 # principal
 main() {
-    # muestra banner de herramienta
+    # muestra banner de la herramienta
     banner
     # creación de directorio principal    
     [ ! -d "./$mainDirectory" ] && mkdir "$mainDirectory"
     # creación de directorio de trabajo
     directoryCreation $workingDirectory
+
+    #echo "Target: $target"
+    #echo "Service: $service"
 
     # Nmap scan
     nmapScan
