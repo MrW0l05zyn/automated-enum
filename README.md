@@ -1,5 +1,7 @@
 # Automated Enum
 
+Herramienta de enumeración automatizada.
+
 ## Dependencias
 
 + nmap
