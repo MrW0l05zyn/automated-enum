@@ -12,6 +12,17 @@ YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+# función de banner
+function banner(){ 
+    echo '                 _____                        _____     __________________                         '
+    echo '   ______ ____  ___  /_____________ _________ __  /___________  /__  ____/__________  ________ ___ '
+    echo '   _  __ `/  / / /  __/  __ \_  __ `__ \  __ `/  __/  _ \  __  /__  __/  __  __ \  / / /_  __ `__ \'
+    echo '   / /_/ // /_/ // /_ / /_/ /  / / / / / /_/ // /_ /  __/ /_/ / _  /___  _  / / / /_/ /_  / / / / /'
+    echo '   \__,_/ \__,_/ \__/ \____//_/ /_/ /_/\__,_/ \__/ \___/\__,_/  /_____/  /_/ /_/\__,_/ /_/ /_/ /_/ '
+    echo '                                                                                                   '
+    echo '                             [ Author : MrW0l05zyn | Version : 0.1 ]                               '
+}
+
 # función de escaneo con Nmap
 function nmapScan(){
     local directory='nmap'
@@ -55,7 +66,9 @@ function nmapPortsExtract(){
 
 # principal
 main() {
-    # creación de principal    
+    # muestra banner de herramienta
+    banner
+    # creación de directorio principal    
     [ ! -d "./$mainDirectory" ] && mkdir "$mainDirectory"
     # creación de directorio de trabajo
     directoryCreation $workingDirectory
