@@ -5,8 +5,9 @@ target=''
 mode='basic'
 modes=(basic full)
 service=''
-services=(HTTP SMB SMTP SNMP SSH)
+services=(HTTP HTTPS SMB SMTP SNMP SSH)
 TCPPortsTarget=''
+UDPPortsTarget=''
 parameterCounter=0
 mainDirectory='automatedEnum'
 workingDirectory='working'
@@ -37,7 +38,7 @@ function usage() {
     echo -e "\nOptions:"
     echo -e "\t-t <TARGET>\tTarget/Host IP address"
     echo -e "\t-m <MODE>\tMode: basic|full (default: basic)"
-    echo -e "\t-s <SERVICE>\tService name: HTTP|SMB|SMTP|SNMP|SSH"
+    echo -e "\t-s <SERVICE>\tService name: HTTP|HTTPS|SMB|SMTP|SNMP|SSH"
     echo -e "\t-h \t\tShows instructions on how to use the tool"
 
     echo -e "\nExamples:"
@@ -176,19 +177,39 @@ function serviceNameByPort(){
     local serviceName=''
 
     case $1 in        
-        # SSH
         22) serviceName='ssh' ;;
-        # HTTP
-        80 | 8080) serviceName='http' ;;
-        # SMTP/S
         25 | 465 | 587) serviceName='smtp' ;;
-        # SMB
+        80 | 443) serviceName='http' ;;
         139 | 445) serviceName='smb' ;;
-        # SNMP
         161 | 162) serviceName='snmp' ;;
     esac
 
     echo "$serviceName"
+}
+
+# función que configura puertos TCP/UDP por nombre de servicio
+function portConfByServiceName(){
+
+    case $1 in
+        SSH) 
+            TCPPortsTarget='22'
+        ;;
+        HTTP) 
+            TCPPortsTarget='80'
+        ;;
+        HTTPS) 
+            TCPPortsTarget='443'
+        ;;        
+        SMTP)
+            TCPPortsTarget='25'
+        ;;
+        SMB)
+            TCPPortsTarget='445'
+        ;;
+        SNMP)
+            UDPPortsTarget='161,162'
+        ;;
+    esac
 }
 
 # función de enumeración de puertos TCP
@@ -201,7 +222,7 @@ function serviceEnumTCP(){
         22) # SSH
 
             ;;
-        80 | 8080) # HTTP
+        80 | 443) # HTTP/S
             
             dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt
 
@@ -220,7 +241,14 @@ function serviceEnumTCP(){
             fi
 
             ;;
-        139 | 445) # SMB
+        139 | 445) # NetBIOS y SMB
+
+            smbclient -N -L $target --option='client min protocol=NT1' | tee $mainDirectory/$serviceName/smbclient-tcp-$1.txt
+            smbmap -H $target | tee $mainDirectory/$serviceName/smbmap-tcp-$1.txt
+
+            if [ $mode = 'full' ]; then
+                smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive-tcp-$1.txt
+            fi
 
             ;;                                    
     esac
@@ -253,8 +281,13 @@ main() {
     # creación de directorio de trabajo
     directoryCreation $workingDirectory
 
-    # Nmap scan
-    nmapScan
+    # enumeracion por servicio
+    if [ -n "$service" ]; then
+        portConfByServiceName $service
+    else
+        # Nmap scan
+        nmapScan
+    fi
 
     # enumeración de puertos TCP
     IFS=', ' read -r -a ports <<< "$TCPPortsTarget"
