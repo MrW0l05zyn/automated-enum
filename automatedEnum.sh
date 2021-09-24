@@ -2,6 +2,8 @@
 
 # variables
 target=''
+mode='basic'
+modes=(basic full)
 service=''
 services=(HTTP SMB SMTP SNMP SSH)
 TCPPortsTarget=''
@@ -30,15 +32,17 @@ function banner(){
 
 function usage() {
     echo -e "\nUsage:"
-    echo -e "\t$0 -t <TARGET> [-s <SERVICE>]"
+    echo -e "\t$0 -t <TARGET> [-m <MODE>] [-s <SERVICE>]"
 
     echo -e "\nOptions:"
     echo -e "\t-t <TARGET>\tTarget/Host IP address"
+    echo -e "\t-m <MODE>\tMode: basic|full (default: basic)"
     echo -e "\t-s <SERVICE>\tService name: HTTP|SMB|SMTP|SNMP|SSH"
     echo -e "\t-h \t\tShows instructions on how to use the tool"
 
     echo -e "\nExamples:"
     echo -e "\t$0 -t X.X.X.X"
+    echo -e "\t$0 -t X.X.X.X -m full"
     echo -e "\t$0 -t X.X.X.X -s HTTP"    
 
     exit 0
@@ -51,6 +55,25 @@ function targetParameterValidation(){
         usage
     fi
 }
+
+# función de validación del parámetro "(-m) mode"
+function modeParameterValidation(){
+    local validMode=false
+
+    if [ -n "$1" ]; then
+        for i in "${modes[@]}"; do
+            if [ $i = $mode ]; then
+                validMode=true
+                break
+            fi
+        done
+        if [ ! $validMode = true ]; then
+            echo -e "\n${YELLOW}Invalid mode \"(-m)\" argument.${NC}"
+            usage
+        fi
+    fi
+}
+
 # función de validación del parámetro "(-s) service"
 function serviceParameterValidation(){
     local validService=false
@@ -70,7 +93,7 @@ function serviceParameterValidation(){
 }
 
 # parámetros
-while getopts ":t:s:h" arg; do
+while getopts ":t:m:s:h" arg; do
     case $arg in
         t) # target
             target=${OPTARG}
@@ -78,6 +101,10 @@ while getopts ":t:s:h" arg; do
             targetParameterValidation $target
             let parameterCounter+=1            
             ;;
+        m) # mode
+            mode=${OPTARG,,}
+            let parameterCounter+=1
+            ;;            
         s) # service
             service=${OPTARG^^}
             let parameterCounter+=1
@@ -99,6 +126,8 @@ function parameterValidation(){
     targetParameterValidation $target
     # validación del parámetro "(-s) service"
     serviceParameterValidation $service
+    # validación del parámetro "(-m) mode"
+    modeParameterValidation $mode
 }
 
 # función de creación de directorios
@@ -147,21 +176,16 @@ function serviceNameByPort(){
     local serviceName=''
 
     case $1 in        
-        22) # SSH
-            serviceName='ssh'             
-            ;;
-        80 | 8080) # HTTP
-            serviceName='http'
-            ;;
-        25 | 465 | 587) # SMTP/S
-            serviceName='smtp'
-            ;;
-        139 | 445) # SMB
-            serviceName='smb'
-            ;;
-        161 | 162) # SNMP
-            serviceName='snmp'
-            ;;             
+        # SSH
+        22) serviceName='ssh' ;;
+        # HTTP
+        80 | 8080) serviceName='http' ;;
+        # SMTP/S
+        25 | 465 | 587) serviceName='smtp' ;;
+        # SMB
+        139 | 445) serviceName='smb' ;;
+        # SNMP
+        161 | 162) serviceName='snmp' ;;
     esac
 
     echo "$serviceName"
@@ -174,18 +198,30 @@ function serviceEnumTCP(){
     directoryCreation $serviceName
 
     case $1 in
-        22) # SSH            
+        22) # SSH
+
             ;;
         80 | 8080) # HTTP
-            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt 
-            #dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f
+            
+            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt
+
+            if [ $mode = 'full' ]; then
+                dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f
+            fi
+
             ;;
         25 | 465 | 587) # SMTP/S
+
             smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-vrfy-top-tcp-$1.txt
-            smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt
-            smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt
+
+            if [ $mode = 'full' ]; then
+                smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt
+                smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt
+            fi
+
             ;;
         139 | 445) # SMB
+
             ;;                                    
     esac
 }
