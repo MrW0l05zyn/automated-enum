@@ -41,7 +41,7 @@ cd automated-enum && chmod +x automatedEnum.sh
 + smbmap
 + smtp-user-enum
 
-### Instalación general de dependencias
+### Instalación de dependencias
 
 ```bash
 sudo apt update
