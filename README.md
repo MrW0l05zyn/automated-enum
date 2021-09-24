@@ -2,13 +2,13 @@
 
 Herramienta de enumeración automatizada.
 
-# Uso
+## Uso
 
 ```bash
 automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 ```
 
-# Ejemplos de utilización
+## Ejemplos de utilización
 
 ```bash
 ./automatedEnum.sh -t 10.0.0.1
@@ -16,7 +16,7 @@ automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 ./automatedEnum.sh -t 10.0.0.1 -s HTTP
 ```
 
-# Argumentos
+## Argumentos
 
 ```
 -t <TARGET>     Target/Host IP address
