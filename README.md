@@ -35,7 +35,7 @@ cd automated-enum && chmod +x automatedEnum.sh
 
 ### Dependencias
 
-+ [dirsearch](https://duckduckgo.com)
++ [dirsearch](https://github.com/maurosoria/dirsearch)
 + [nmap](https://nmap.org/)
 + [seclists](https://github.com/danielmiessler/SecLists)
 + [smbclient](https://www.samba.org/)
