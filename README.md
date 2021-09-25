@@ -11,17 +11,18 @@ automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 ## Ejemplos de utilización
 
 ```bash
-./automatedEnum.sh -t 10.0.0.1
-./automatedEnum.sh -t 10.0.0.1 -m full
-./automatedEnum.sh -t 10.0.0.1 -s HTTP
+./automatedEnum.sh -t X.X.X.X
+./automatedEnum.sh -t X.X.X.X -m vuln -s FTP
+./automatedEnum.sh -t X.X.X.X -m full -s SMTP
+./automatedEnum.sh -t X.X.X.X -s HTTP -p 8080
 ```
 
 ## Argumentos
 
 ```
 -t <TARGET>     Target/Host IP address
--m <MODE>       Mode: basic|full (default: basic)
--s <SERVICE>    Service name: HTTP|HTTPS|SMB|SMTP|SNMP|SSH
+-m <MODE>       Mode: basic|vuln|full (default: basic)
+-s <SERVICE>    Service name: FTP|HTTP|HTTPS|SMB|SMTP|SNMP|SSH
 -h              Shows instructions on how to use the tool
 ```
 
