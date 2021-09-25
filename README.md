@@ -34,16 +34,18 @@ cd automated-enum && chmod +x automatedEnum.sh
 
 ### Dependencias
 
-+ dirsearch
-+ nmap
-+ seclists
-+ smbclient
-+ smbmap
-+ smtp-user-enum
++ [dirsearch](https://duckduckgo.com)
++ [nmap](https://nmap.org/)
++ [seclists](https://github.com/danielmiessler/SecLists)
++ [smbclient](https://www.samba.org/)
++ [smbmap](https://github.com/ShawnDEvans/smbmap)
++ [smtp-user-enum](http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum)
++ [snmp-check](http://www.nothink.org/codes/snmpcheck/index.php)
++ [whatweb](https://morningstarsecurity.com/research/whatweb)
 
 ### Instalación de dependencias
 
 ```bash
 sudo apt update
-sudo apt install dirsearch nmap seclists smbclient smbmap smtp-user-enum
+sudo apt install dirsearch nmap seclists smbclient smbmap smtp-user-enum snmp-check whatweb
 ```

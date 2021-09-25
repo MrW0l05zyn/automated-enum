@@ -3,14 +3,15 @@
 # variables
 target=''
 mode='basic'
-modes=(basic full)
+modes=(basic vuln full)
 service=''
-services=(HTTP HTTPS SMB SMTP SNMP SSH)
+services=(FTP HTTP HTTPS SMB SMTP SNMP SSH)
 TCPPortsTarget=''
 UDPPortsTarget=''
 parameterCounter=0
 mainDirectory='automatedEnum'
-workingDirectory='working'
+vulnDirectory='vulns'
+workingDirectory='.working'
 topUDPPorts='53,67,68,69,111,123,135,137,138,139,161,162,445,500,514,520,631,998,1434,1701,1900,4500,5353,49152,49154'
 version='0.1'
 
@@ -31,20 +32,22 @@ function banner(){
     echo "                             [ Author : MrW0l05zyn | Version : $version ]                               "
 }
 
+# función de uso
 function usage() {
     echo -e "\nUsage:"
     echo -e "\t$0 -t <TARGET> [-m <MODE>] [-s <SERVICE>]"
 
     echo -e "\nOptions:"
     echo -e "\t-t <TARGET>\tTarget/Host IP address"
-    echo -e "\t-m <MODE>\tMode: basic|full (default: basic)"
-    echo -e "\t-s <SERVICE>\tService name: HTTP|HTTPS|SMB|SMTP|SNMP|SSH"
+    echo -e "\t-m <MODE>\tMode: basic|vuln|full (default: basic)"
+    echo -e "\t-s <SERVICE>\tService name: FTP|HTTP|HTTPS|SMB|SMTP|SNMP|SSH"
     echo -e "\t-h \t\tShows instructions on how to use the tool"
 
     echo -e "\nExamples:"
-    echo -e "\t$0 -t X.X.X.X"
-    echo -e "\t$0 -t X.X.X.X -m full"
-    echo -e "\t$0 -t X.X.X.X -s HTTP"    
+    echo -e "\t$0 -t X.X.X.X"    
+    echo -e "\t$0 -t X.X.X.X -m vuln -s FTP"
+    echo -e "\t$0 -t X.X.X.X -m full -s SMTP"
+    echo -e "\t$0 -t X.X.X.X -s HTTP -p 8080"
 
     exit 0
 }
@@ -53,7 +56,7 @@ function usage() {
 function targetParameterValidation(){
     if [[ ! $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
         echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
-        usage
+        #usage
     fi
 }
 
@@ -101,18 +104,18 @@ while getopts ":t:m:s:h" arg; do
             # validación del parámetro "(-t) target"
             targetParameterValidation $target
             let parameterCounter+=1            
-            ;;
+        ;;
         m) # mode
             mode=${OPTARG,,}
             let parameterCounter+=1
-            ;;            
+        ;;            
         s) # service
             service=${OPTARG^^}
             let parameterCounter+=1
-            ;;
+        ;;
         h | *) # usage
             usage
-            ;;
+        ;;
     esac
 done
 
@@ -141,16 +144,16 @@ function nmapPortsExtract(){
     case $1 in
         TCP)
             TCPPortsTarget="$(cat $mainDirectory/$workingDirectory/tcp-ports | grep -oP '\d{1,5}/open' | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
-            ;;
+        ;;
         UDP)
             UDPPortsTarget="$(cat $mainDirectory/$workingDirectory/udp-ports | grep -oP '\d{1,5}/open' | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
-            ;;
+        ;;
     esac    
 }
 
 # función de escaneo con Nmap
 function nmapScan(){
-    local directory='nmap'
+    local directory='ports'
 
     # creación de directorio Nmap
     directoryCreation $directory
@@ -177,11 +180,12 @@ function serviceNameByPort(){
     local serviceName=''
 
     case $1 in        
-        22) serviceName='ssh' ;;
+        21)             serviceName='ftp'  ;;
+        22)             serviceName='ssh'  ;;
         25 | 465 | 587) serviceName='smtp' ;;
-        80 | 443) serviceName='http' ;;
-        139 | 445) serviceName='smb' ;;
-        161 | 162) serviceName='snmp' ;;
+        80 | 443)       serviceName='http' ;;
+        139 | 445)      serviceName='smb'  ;;
+        161 | 162)      serviceName='snmp' ;;
     esac
 
     echo "$serviceName"
@@ -191,79 +195,131 @@ function serviceNameByPort(){
 function portConfByServiceName(){
 
     case $1 in
-        SSH) 
-            TCPPortsTarget='22'
-        ;;
-        HTTP) 
-            TCPPortsTarget='80'
-        ;;
-        HTTPS) 
-            TCPPortsTarget='443'
-        ;;        
-        SMTP)
-            TCPPortsTarget='25'
-        ;;
-        SMB)
-            TCPPortsTarget='445'
-        ;;
-        SNMP)
-            UDPPortsTarget='161,162'
-        ;;
+        FTP)   TCPPortsTarget='21'      ;;
+        SSH)   TCPPortsTarget='22'      ;;
+        HTTP)  TCPPortsTarget='80'      ;;
+        HTTPS) TCPPortsTarget='443'     ;;        
+        SMTP)  TCPPortsTarget='25'      ;;
+        SMB)   TCPPortsTarget='445'     ;;
+        SNMP)  UDPPortsTarget='161,162' ;;
     esac
 }
 
-# función de enumeración de puertos TCP
-function serviceEnumTCP(){
+# función de enumeración básica de puertos TCP
+function basicServiceEnumTCP(){
     # obtención de nombre de servicio según puerto TCP
     serviceName="$(serviceNameByPort $1)"
     directoryCreation $serviceName
 
     case $1 in
+        21) # FTP
+
+        ;;    
         22) # SSH
 
-            ;;
+        ;;
         80 | 443) # HTTP/S
-            
+            whatweb -v -a 1 http://$target:$1/ | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt
             dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt
-
-            if [ $mode = 'full' ]; then
-                dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f
-            fi
-
-            ;;
+        ;;
         25 | 465 | 587) # SMTP/S
-
             smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-vrfy-top-tcp-$1.txt
 
-            if [ $mode = 'full' ]; then
-                smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt
-                smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt
-            fi
-
-            ;;
+        ;;
         139 | 445) # NetBIOS y SMB
-
             smbclient -N -L $target --option='client min protocol=NT1' | tee $mainDirectory/$serviceName/smbclient-tcp-$1.txt
             smbmap -H $target | tee $mainDirectory/$serviceName/smbmap-tcp-$1.txt
-
-            if [ $mode = 'full' ]; then
-                smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive-tcp-$1.txt
-            fi
-
-            ;;                                    
+        ;;                                    
     esac
 }
 
-# función de enumeración de puertos UDP
-function serviceEnumUDP(){
+# función de enumeración full de puertos TCP
+function fullServiceEnumTCP(){
     # obtención de nombre de servicio según puerto TCP
+    serviceName="$(serviceNameByPort $1)"
+    directoryCreation $serviceName
+
+    case $1 in
+        21) # FTP
+
+        ;;    
+        22) # SSH
+
+        ;;
+        80 | 443) # HTTP/S
+            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f
+        ;;
+        25 | 465 | 587) # SMTP/S
+            smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt
+            smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt
+        ;;
+        139 | 445) # NetBIOS y SMB
+            smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive-tcp-$1.txt
+        ;;                                    
+    esac
+}
+
+# función de enumeración de vulnerabilidades de puertos TCP
+function vulnServiceEnumTCP(){
+    # obtención de nombre de servicio según puerto TCP
+    serviceName="$(serviceNameByPort $1)"
+
+    case $1 in
+        21) # FTP
+            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt
+        ;;    
+        22) # SSH
+            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt
+        ;;
+        80 | 443) # HTTP/S
+            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt
+        ;;
+        25 | 465 | 587) # SMTP/S
+            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt
+        ;;
+        139 | 445) # NetBIOS y SMB
+            
+        ;;
+    esac
+}
+
+# función de enumeración básica de puertos UDP
+function basicServiceEnumUDP(){
+    # obtención de nombre de servicio según puerto UDP
     serviceName="$(serviceNameByPort $1)"
     directoryCreation $serviceName
 
     case $1 in        
         161 | 162) # SNMP
-            sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$serviceName/nmap-snmp.txt
-            ;;                                    
+            sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$serviceName/nmap-snmp-udp-161-162.txt
+            snmp-check -p 161 $target | tee $mainDirectory/$serviceName/snmp-check-udp-161.txt
+        ;;                                    
+    esac
+}
+
+# función de enumeración full de puertos UDP
+function fullServiceEnumUDP(){
+    # obtención de nombre de servicio según puerto UDP
+    serviceName="$(serviceNameByPort $1)"
+    directoryCreation $serviceName
+
+    case $1 in        
+        161 | 162) # SNMP
+
+        ;;                                    
+    esac
+}
+
+# función de enumeración de vulnerabilidades de puertos UDP
+function vulnServiceEnumUDP(){
+    # obtención de nombre de servicio según puerto UDP
+    serviceName="$(serviceNameByPort $1)"
+    directoryCreation $serviceName
+
+    case $1 in        
+        161 | 162) # SNMP
+
+        ;;                                    
     esac
 }
 
@@ -281,7 +337,12 @@ main() {
     # creación de directorio de trabajo
     directoryCreation $workingDirectory
 
-    # enumeracion por servicio
+    # creación de directorio de vulnerabilidades
+    if [ $mode = 'full' ] || [ $mode = 'vuln' ]; then
+        directoryCreation $vulnDirectory
+    fi
+
+    # configuración de puertos a enumerar
     if [ -n "$service" ]; then
         portConfByServiceName $service
     else
@@ -289,17 +350,47 @@ main() {
         nmapScan
     fi
 
-    # enumeración de puertos TCP
-    IFS=', ' read -r -a ports <<< "$TCPPortsTarget"
-    for port in "${ports[@]}"; do
-        serviceEnumTCP $port
-    done
+    IFS=', ' read -r -a tcpPorts <<< "$TCPPortsTarget"
+    IFS=', ' read -r -a udpPorts <<< "$UDPPortsTarget"
 
-    # enumeración de puertos UDP
-    IFS=', ' read -r -a ports <<< "$UDPPortsTarget"
-    for port in "${ports[@]}"; do
-        serviceEnumUDP $port
-    done
+    case $mode in        
+        basic)
+            # enumeración básica de puertos TCP
+            for port in "${tcpPorts[@]}"; do
+                basicServiceEnumTCP $port
+            done
+
+            # enumeración básica de puertos UDP
+            for port in "${udpPorts[@]}"; do
+                basicServiceEnumUDP $port
+            done
+        ;;
+        full)
+            # enumeración full de puertos TCP
+            for port in "${tcpPorts[@]}"; do
+                basicServiceEnumTCP $port
+                fullServiceEnumTCP $port
+            done
+
+            # enumeración full de puertos UDP
+            for port in "${udpPorts[@]}"; do
+                basicServiceEnumUDP $port
+                fullServiceEnumUDP $port                
+            done
+        ;;
+        vuln)
+            # vulnerabilidades de puertos TCP
+            for port in "${tcpPorts[@]}"; do
+                vulnServiceEnumTCP $port
+            done
+
+            # vulnerabilidades de puertos UDP
+            for port in "${udpPorts[@]}"; do
+                vulnServiceEnumUDP $port
+            done            
+        ;;
+    esac
+
 }
 
 # inicio de herramienta automatedEnum
