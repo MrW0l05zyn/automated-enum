@@ -19,6 +19,9 @@ version='0.1'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # función de banner
@@ -54,9 +57,12 @@ function usage() {
 
 # función de validación del parámetro "(-t) target"
 function targetParameterValidation(){
-    if [[ ! $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-        echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
-        #usage
+       # IP address    
+    if [[ ! $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && 
+       # Hostname
+       [[ ! $1 =~ ^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$ ]]; then
+            echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
+            usage
     fi
 }
 
@@ -143,12 +149,36 @@ function directoryCreation(){
 function nmapPortsExtract(){
     case $1 in
         TCP)
-            TCPPortsTarget="$(cat $mainDirectory/$workingDirectory/tcp-ports | grep -oP '\d{1,5}/open' | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
+            if [ -e "./$mainDirectory/$workingDirectory/tcp-ports" ]; then
+                TCPPortsTarget="$(cat $mainDirectory/$workingDirectory/tcp-ports | grep -oP '\d{1,5}/open' | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
+            fi
         ;;
         UDP)
-            UDPPortsTarget="$(cat $mainDirectory/$workingDirectory/udp-ports | grep -oP '\d{1,5}/open' | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
+            if [ -e "./$mainDirectory/$workingDirectory/udp-ports" ]; then
+                UDPPortsTarget="$(cat $mainDirectory/$workingDirectory/udp-ports | grep -oP '\d{1,5}/open' | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
+            fi
         ;;
     esac    
+}
+
+# función de spinner para ejecución de procesos
+function spinner(){
+    local info="$1"
+    local pid=$!
+    local delay=0.25
+    local spinstr='|/-\'
+    while kill -0 $pid 2> /dev/null; do
+        local temp=${spinstr#?}
+        printf "${PURPLE}[%c] $info${NC}" "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        local reset="\b\b\b\b\b\b"
+        for ((i=1; i<=$(echo $info | wc -c); i++)); do
+            reset+="\b"
+        done
+        printf $reset
+    done
+    printf "${GREEN}[\u2713] $info${NC}\n"
 }
 
 # función de escaneo con Nmap
@@ -156,23 +186,42 @@ function nmapScan(){
     local directory='ports'
 
     # creación de directorio Nmap
-    directoryCreation $directory
+    directoryCreation $directory    
 
     # TCP all port scan
-    echo -e "\n${GREEN}[Nmap - TCP all port scan]${NC}\n"
-    sudo nmap -sS -p- --open -n --min-rate 5000 -Pn $target -oN $mainDirectory/$directory/all-tcp-ports.txt -oG $mainDirectory/$workingDirectory/tcp-ports
+    sudo nmap -sS -p- --open -n --min-rate 5000 -Pn $target -oN $mainDirectory/$directory/all-tcp-ports.txt -oG $mainDirectory/$workingDirectory/tcp-ports &> /dev/null &
+    echo ''; spinner "[Nmap - TCP all port scan]"    
+
+    # extracción de puertos TCP
     nmapPortsExtract 'TCP'
 
-    # UDP main port scan
-    echo -e "\n${GREEN}[Nmap - UDP main port scan]${NC}\n"
-    sudo nmap -sU -p $topUDPPorts --open -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports
+    # muestra puertos TCP encontrados
+    if [ -n "$TCPPortsTarget" ]; then
+        echo ''; cat $mainDirectory/$directory/all-tcp-ports.txt | grep -v '#' | grep 'PORT\|[0-9]/tcp'
+    else
+        echo ''; echo -e "${YELLOW}TCP ports not found.${NC}"
+    fi
+
+    # UDP main port scan    
+    sudo nmap -sU -p $topUDPPorts --open -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports &> /dev/null &
+    echo ''; spinner "[Nmap - UDP main port scan]"
+
+    # extracción de puertos UDP
     nmapPortsExtract 'UDP'
+
+    # muestra puertos UDP encontrados
+    if [ -n "$UDPPortsTarget" ]; then
+        echo ''; cat $mainDirectory/$directory/main-udp-ports.txt | grep -v '#' | grep 'PORT\|[0-9]/udp'
+    else
+        echo ''; echo -e "${YELLOW}UDP ports not found.${NC}"
+    fi   
 
     # identificación de servicios
     if [ -n "$TCPPortsTarget" ]; then
-        echo -e "\n${GREEN}[Nmap - Identification of services and versions of TCP ports]${NC}\n"
-        nmap -sC -sV -p $TCPPortsTarget -Pn $target -oN $mainDirectory/$directory/tcp-ports-services.txt
-    fi
+        nmap -sC -sV -p $TCPPortsTarget -Pn $target -oN $mainDirectory/$directory/tcp-ports-services.txt &> /dev/null &
+        echo ''; spinner "[Nmap - Identification of services and versions of TCP ports]"
+        echo ''; cat $mainDirectory/$directory/tcp-ports-services.txt | grep -v '#' | grep 'PORT\|[0-9]/tcp'; echo ''
+    fi    
 }
 
 # función que entrega nombre de servicio según puerto TCP/UDP
@@ -180,12 +229,13 @@ function serviceNameByPort(){
     local serviceName=''
 
     case $1 in        
-        21)             serviceName='ftp'  ;;
-        22)             serviceName='ssh'  ;;
-        25 | 465 | 587) serviceName='smtp' ;;
-        80 | 443)       serviceName='http' ;;
-        139 | 445)      serviceName='smb'  ;;
-        161 | 162)      serviceName='snmp' ;;
+        21)             serviceName='ftp'   ;;
+        22)             serviceName='ssh'   ;;
+        25 | 465 | 587) serviceName='smtp'  ;;
+        80)             serviceName='http'  ;;
+        443)            serviceName='https' ;;
+        139 | 445)      serviceName='smb'   ;;
+        161 | 162)      serviceName='snmp'  ;;
     esac
 
     echo "$serviceName"
@@ -218,17 +268,27 @@ function basicServiceEnumTCP(){
         22) # SSH
 
         ;;
-        80 | 443) # HTTP/S
-            whatweb -v -a 1 http://$target:$1/ | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt
-            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt
+        80) # HTTP
+            whatweb -v -a 1 http://$target:$1/ | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt &> /dev/null &
+            spinner "[WhatWeb]"
+            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt &> /dev/null &
+            spinner "[dirsearch]"
         ;;
+        443) # HTTPS
+            whatweb -v -a 1 https://$target:$1/ | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt &> /dev/null &
+            spinner "[WhatWeb]"
+            dirsearch -u https://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt &> /dev/null &
+            spinner "[dirsearch]"
+        ;;            
         25 | 465 | 587) # SMTP/S
-            smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-vrfy-top-tcp-$1.txt
-
+            smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-vrfy-top-tcp-$1.txt &> /dev/null &
+            spinner "[smtp-user-enum - VRFY]"
         ;;
         139 | 445) # NetBIOS y SMB
-            smbclient -N -L $target --option='client min protocol=NT1' | tee $mainDirectory/$serviceName/smbclient-tcp-$1.txt
-            smbmap -H $target | tee $mainDirectory/$serviceName/smbmap-tcp-$1.txt
+            smbclient -N -L $target --option='client min protocol=NT1' | tee $mainDirectory/$serviceName/smbclient-tcp-$1.txt &> /dev/null &
+            spinner "[smbclient]"
+            smbmap -H $target | tee $mainDirectory/$serviceName/smbmap-tcp-$1.txt &> /dev/null &
+            spinner "[SMBMap]"
         ;;                                    
     esac
 }
@@ -246,15 +306,23 @@ function fullServiceEnumTCP(){
         22) # SSH
 
         ;;
-        80 | 443) # HTTP/S
-            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f
+        80) # HTTP
+            dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
+            spinner "[dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)]"
+        ;;            
+        443) # HTTPS
+            dirsearch -u https://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
+            spinner "[dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)]"            
         ;;
         25 | 465 | 587) # SMTP/S
-            smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt
-            smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt
+            smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt &> /dev/null &
+            spinner "[smtp-user-enum - EXPN]"
+            smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt &> /dev/null &
+            spinner "[smtp-user-enum - RCPT]"
         ;;
         139 | 445) # NetBIOS y SMB
-            smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive-tcp-$1.txt
+            smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive-tcp-$1.txt &> /dev/null &
+            spinner "[SMBMap - Recursive]"
         ;;                                    
     esac
 }
@@ -291,8 +359,10 @@ function basicServiceEnumUDP(){
 
     case $1 in        
         161 | 162) # SNMP
-            sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$serviceName/nmap-snmp-udp-161-162.txt
-            snmp-check -p 161 $target | tee $mainDirectory/$serviceName/snmp-check-udp-161.txt
+            sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$serviceName/nmap-snmp-udp-161-162.txt &> /dev/null &
+            spinner "[Nmap]"
+            snmp-check -p 161 $target | tee $mainDirectory/$serviceName/snmp-check-udp-161.txt &> /dev/null &
+            spinner "[snmp-check]"
         ;;                                    
     esac
 }
@@ -324,9 +394,14 @@ function vulnServiceEnumUDP(){
 }
 
 # principal
-main() {
+main() {    
     # validación de parámetros
     parameterValidation
+
+    # validación de privilegios de root
+    if ! sudo true; then
+        exit 1
+    fi
 
     # muestra banner de la herramienta
     banner
