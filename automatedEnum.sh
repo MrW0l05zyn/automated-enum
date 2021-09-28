@@ -57,12 +57,13 @@ function usage() {
 
 # función de validación del parámetro "(-t) target"
 function targetParameterValidation(){
-       # IP address    
-    if [[ ! $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && 
-       # Hostname
-       [[ ! $1 =~ ^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$ ]]; then
-            echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
-            usage
+    regexIP='^(0*(1?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))\.){3}0*(1?[0-9]{1,2}|2([‌​0-4][0-9]|5[0-5]))$'
+    regexHostname='^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$'
+
+    # IP address y hostname 
+    if [[ ! $1 =~ $regexIP ]] && [[ ! $1 =~ $regexHostname ]]; then
+        echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
+        usage
     fi
 }
 
