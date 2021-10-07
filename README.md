@@ -22,15 +22,16 @@ automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 ```
 -t <TARGET>     Target/Host IP address
 -m <MODE>       Mode: basic|vuln|full (default: basic)
--s <SERVICE>    Service name: FTP|HTTP|HTTPS|RDP|SMB|SMTP|SNMP|SSH
+-s <SERVICE>    Service name: FTP|HTTP|HTTPS|RDP|REDIS|SMB|SMTP|SNMP|SSH
 -h              Shows instructions on how to use the tool
 ```
 
 ## Instalación
 
 ```bash
+cd /opt
 git clone https://github.com/MrW0l05zyn/automated-enum.git
-cd automated-enum && chmod +x automatedEnum.sh
+sudo ln -s $(pwd)/automated-enum/automatedEnum.sh /usr/local/bin/
 ```
 
 ### Dependencias

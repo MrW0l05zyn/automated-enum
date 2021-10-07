@@ -5,7 +5,7 @@ target=''
 mode='basic'
 modes=(basic vuln full)
 service=''
-services=(FTP HTTP HTTPS RDP SMB SMTP SNMP SSH)
+services=(FTP HTTP HTTPS RDP REDIS SMB SMTP SNMP SSH)
 TCPPortsTarget=''
 UDPPortsTarget=''
 parameterCounter=0
@@ -48,7 +48,7 @@ function usage() {
     echo -e "\nOptions:"
     echo -e "\t-t <TARGET>\tTarget/Host IP address"
     echo -e "\t-m <MODE>\tMode: basic|vuln|full (default: basic)"
-    echo -e "\t-s <SERVICE>\tService name: FTP|HTTP|HTTPS|RDP|SMB|SMTP|SNMP|SSH"
+    echo -e "\t-s <SERVICE>\tService name: FTP|HTTP|HTTPS|RDP|REDIS|SMB|SMTP|SNMP|SSH"
     echo -e "\t-h \t\tShows instructions on how to use the tool"
 
     echo -e "\nExamples:"
@@ -262,6 +262,7 @@ function serviceNameByPort(){
         139 | 445)      serviceName='smb'   ;;
         161 | 162)      serviceName='snmp'  ;;
         3389)           serviceName='rdp'   ;;
+        6379)           serviceName='redis' ;;        
     esac
 
     echo "$serviceName"
@@ -278,7 +279,8 @@ function portConfByServiceName(){
         HTTPS) TCPPortsTarget='443'     ;;
         SMB)   TCPPortsTarget='445'     ;;        
         SNMP)  UDPPortsTarget='161,162' ;;
-        RDP)   TCPPortsTarget='3389'    ;;        
+        RDP)   TCPPortsTarget='3389'    ;;
+        REDIS) TCPPortsTarget='6379'    ;;        
     esac
 }
 
@@ -325,6 +327,11 @@ function basicServiceEnumTCP(){
             smbmap -H $target | tee $mainDirectory/$serviceName/smbmap.txt &> /dev/null &
             spinner "[SMBMap]" 2
         ;;
+        6379) # Redis
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+
+            nmap -sV -p $1 --script redis-info $target | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "[Nmap]" 2
     esac
 }
 
