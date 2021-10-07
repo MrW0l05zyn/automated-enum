@@ -12,9 +12,9 @@ automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 
 ```bash
 ./automatedEnum.sh -t X.X.X.X
-./automatedEnum.sh -t X.X.X.X -m vuln -s FTP
-./automatedEnum.sh -t X.X.X.X -m full -s SMTP
-./automatedEnum.sh -t X.X.X.X -s HTTP -p 8080
+./automatedEnum.sh -t X.X.X.X -s HTTP
+./automatedEnum.sh -t X.X.X.X -m full
+./automatedEnum.sh -t X.X.X.X -m vuln -s SMB
 ```
 
 ## Argumentos
@@ -22,7 +22,7 @@ automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 ```
 -t <TARGET>     Target/Host IP address
 -m <MODE>       Mode: basic|vuln|full (default: basic)
--s <SERVICE>    Service name: FTP|HTTP|HTTPS|SMB|SMTP|SNMP|SSH
+-s <SERVICE>    Service name: FTP|HTTP|HTTPS|RDP|SMB|SMTP|SNMP|SSH
 -h              Shows instructions on how to use the tool
 ```
 
