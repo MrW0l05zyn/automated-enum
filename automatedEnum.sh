@@ -52,10 +52,10 @@ function usage() {
     echo -e "\t-h \t\tShows instructions on how to use the tool"
 
     echo -e "\nExamples:"
-    echo -e "\t$0 -t X.X.X.X"    
-    echo -e "\t$0 -t X.X.X.X -m vuln -s FTP"
-    echo -e "\t$0 -t X.X.X.X -m full -s SMTP"
-    echo -e "\t$0 -t X.X.X.X -s HTTP -p 8080"
+    echo -e "\t$0 -t X.X.X.X"
+    echo -e "\t$0 -t X.X.X.X -s HTTP"
+    echo -e "\t$0 -t X.X.X.X -m full"
+    echo -e "\t$0 -t X.X.X.X -m vuln -s SMB"    
 
     exit 0
 }
@@ -495,7 +495,6 @@ main() {
             fi
         ;;
     esac
-
 }
 
 # inicio de herramienta automatedEnum
