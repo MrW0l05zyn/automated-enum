@@ -16,6 +16,7 @@ topUDPPorts='53,67,68,69,111,123,135,137,138,139,161,162,445,500,514,520,631,998
 version='0.1'
 indentation1='   '
 indentation2='      '
+noCategoriesNmapScript='brute or broadcast or dos or external or fuzzer'
 
 # colores
 RED='\033[0;31m'
@@ -200,7 +201,7 @@ function spinner(){
 
 # función de título de etapa en proceso
 function stageProcessTitle(){
-    echo -e "${BGREEN}[${1^^}]${NC}"
+    echo -e "${BGREEN}[ ${1^^} ]${NC}"
 }
 
 # función de escaneo con Nmap
@@ -208,7 +209,7 @@ function nmapScan(){
     local directory='ports'
 
     # creación de directorio Nmap
-    directoryCreation $directory    
+    directoryCreation $directory
 
     # título de etapa en proceso
     echo ''; stageProcessTitle "Port Scan"
@@ -273,14 +274,14 @@ function portConfByServiceName(){
 
     case $1 in
         FTP)   TCPPortsTarget='21'      ;;
-        SSH)   TCPPortsTarget='22'      ;;        
-        SMTP)  TCPPortsTarget='25'      ;;        
+        SSH)   TCPPortsTarget='22'      ;;
+        SMTP)  TCPPortsTarget='25'      ;;
         HTTP)  TCPPortsTarget='80'      ;;
         HTTPS) TCPPortsTarget='443'     ;;
-        SMB)   TCPPortsTarget='445'     ;;        
+        SMB)   TCPPortsTarget='139,445' ;;
         SNMP)  UDPPortsTarget='161,162' ;;
         RDP)   TCPPortsTarget='3389'    ;;
-        REDIS) TCPPortsTarget='6379'    ;;        
+        REDIS) TCPPortsTarget='6379'    ;;
     esac
 }
 
@@ -292,46 +293,67 @@ function basicServiceEnumTCP(){
 
     case $1 in
         21) # FTP
-            
-        ;;    
-        22) # SSH
-            
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+
+            nmap -sV -p $1 --script="banner,ftp* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;
+        22) # SSH
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+
+            nmap -sV -p $1 --script="banner,ssh* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
+        ;;
+        25 | 465 | 587) # SMTP/S
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+
+            nmap -sV -p $1 --script="banner,smtp* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
+            smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-vrfy-top-tcp-$1.txt &> /dev/null &
+            spinner "smtp-user-enum - VRFY" 2
+        ;;                
         80 | 8080) # HTTP
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
 
-            whatweb -v -a 1 http://$target:$1/ | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt &> /dev/null &
-            spinner "[WhatWeb]" 2
+            nmap -sV -p $1 --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
+            whatweb -v -a 1 http://$target:$1/ 2>/dev/null | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt &> /dev/null &
+            spinner "WhatWeb" 2
             dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt &> /dev/null &
-            spinner "[dirsearch]" 2
+            spinner "dirsearch" 2
         ;;
         443) # HTTPS
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
 
+            nmap -sV -p $1 --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
             whatweb -v -a 1 https://$target:$1/ | tee $mainDirectory/$serviceName/whapweb-tcp-$1.txt &> /dev/null &
-            spinner "[WhatWeb]" 2
+            spinner "WhatWeb" 2
             dirsearch -u https://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-tcp-$1.txt &> /dev/null &
-            spinner "[dirsearch]" 2
-        ;;            
-        25 | 465 | 587) # SMTP/S
-            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
-
-            smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-vrfy-top-tcp-$1.txt &> /dev/null &
-            spinner "[smtp-user-enum - VRFY]" 2
+            spinner "dirsearch" 2
         ;;
         139 | 445) # NetBIOS y SMB
             echo -e "${GREEN}$indentation1[139/TCP (NetBIOS), 445/TCP (SMB)]${NC}"
 
+            nmap -sV -p 139,445 --script="banner,smb* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-139-445.txt &> /dev/null &
+            spinner "Nmap" 2
             smbclient -N -L $target --option='client min protocol=NT1' 2>/dev/null | tee $mainDirectory/$serviceName/smbclient.txt &> /dev/null &
-            spinner "[smbclient]" 2
+            spinner "smbclient" 2
             smbmap -H $target | tee $mainDirectory/$serviceName/smbmap.txt &> /dev/null &
-            spinner "[SMBMap]" 2
+            spinner "SMBMap" 2
+        ;;
+        3389) # RDP
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+
+            nmap -sV -p $1 --script="banner,rdp* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;
         6379) # Redis
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
 
-            nmap -sV -p $1 --script redis-info $target | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            nmap -sV -p $1 --script="banner,redis* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$serviceName/nmap-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
+        ;;            
     esac
 }
 
@@ -342,30 +364,24 @@ function fullServiceEnumTCP(){
     directoryCreation $serviceName
 
     case $1 in
-        21) # FTP
-
-        ;;    
-        22) # SSH
-
-        ;;
         80) # HTTP        
             dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
-            spinner "[dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)]" 2
+            spinner "dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)" 2
         ;;            
         443) # HTTPS
             dirsearch -u https://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
-            spinner "[dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)]" 2
+            spinner "dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)" 2
         ;;
         25 | 465 | 587) # SMTP/S
             smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$1.txt &> /dev/null &
-            spinner "[smtp-user-enum - EXPN]" 2
+            spinner "smtp-user-enum - EXPN" 2
             smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $1 | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$1.txt &> /dev/null &
-            spinner "[smtp-user-enum - RCPT]" 2
+            spinner "smtp-user-enum - RCPT" 2
         ;;
         139 | 445) # NetBIOS y SMB
             smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive.txt &> /dev/null &
-            spinner "[SMBMap - Recursive]" 2
-        ;;                                    
+            spinner "SMBMap - Recursive" 2
+        ;;           
     esac
 }
 
@@ -377,28 +393,38 @@ function vulnServiceEnumTCP(){
     case $1 in
         21) # FTP
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"            
-            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            nmap -p $1 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;    
         22) # SSH
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
-            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            nmap -p $1 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;
         80 | 8080 | 443) # HTTP/S
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
-            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            nmap -p $1 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;
         25 | 465 | 587) # SMTP/S
             echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
-            nmap -p $1 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            nmap -p $1 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;
         139 | 445) # NetBIOS y SMB
             echo -e "${GREEN}$indentation1[139/TCP (NetBIOS), 445/TCP (SMB)]${NC}"
-            nmap -p 139,445 --script=vuln $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            nmap -p 139,445 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-139-445.txt &> /dev/null &
+            spinner "Nmap" 2
+        ;;
+        3389) # RDP
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+            nmap -p $1 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
+        ;;
+        6379) # Redis
+            echo -e "${GREEN}$indentation1[$1/TCP (${serviceName^^})]${NC}"
+            nmap -p $1 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$serviceName-tcp-$1.txt &> /dev/null &
+            spinner "Nmap" 2
         ;;
     esac
 }
@@ -414,9 +440,9 @@ function basicServiceEnumUDP(){
             echo -e "${GREEN}$indentation1[161/UDP, 162/UDP (${serviceName^^})]${NC}"
 
             sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$serviceName/nmap-snmp-udp-161-162.txt &> /dev/null &
-            spinner "[Nmap]" 2
+            spinner "Nmap" 2
             snmp-check -p 161 $target | tee $mainDirectory/$serviceName/snmp-check-udp-161.txt &> /dev/null &
-            spinner "[snmp-check]" 2
+            spinner "snmp-check" 2
         ;;                                    
     esac
 }
@@ -483,6 +509,14 @@ main() {
                     fullServiceEnumTCP $port
                 done            
             fi
+
+            # enumeración full de puertos UDP
+            if [ -n "$udpPorts" ]; then
+                echo ''; stageProcessTitle "full enumeration (udp ports)" 1; echo ''
+                for port in "${udpPorts[@]}"; do
+                    basicServiceEnumUDP $port
+                done
+            fi            
             
             # enumeración de vulnerabilidades de puertos TCP
             if [ -n "$tcpPorts" ]; then
