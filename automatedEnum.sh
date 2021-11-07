@@ -12,7 +12,6 @@ parameterCounter=0
 mainDirectory='automatedEnum'
 vulnDirectory='vulns'
 workingDirectory='.working'
-topUDPPorts='53,67,68,69,111,123,135,137,138,139,161,162,445,500,514,520,631,998,1434,1701,1900,4500,5353,49152,49154'
 version='0.1'
 indentation1='   '
 indentation2='      '
@@ -229,7 +228,7 @@ function nmapScan(){
     fi
 
     # UDP main port scan    
-    sudo nmap -sU -p $topUDPPorts --open -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports &> /dev/null &
+    sudo nmap -sU --top-port 10 -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports &> /dev/null &
     echo ''; spinner "[Nmap - UDP main port scan]" 1
 
     # extracción de puertos UDP
