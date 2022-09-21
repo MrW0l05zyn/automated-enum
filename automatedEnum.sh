@@ -65,7 +65,7 @@ function targetParameterValidation(){
     regexIP='^(0*(1?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))\.){3}0*(1?[0-9]{1,2}|2([‌​0-4][0-9]|5[0-5]))$'
     regexHostname='^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$'
 
-    # Validación de dirección IP y hostname
+    # validación de dirección IP y hostname
     if [[ ! $1 =~ $regexIP ]] && [[ ! $1 =~ $regexHostname ]]; then
         echo -e "\n${YELLOW}Invalid target \"(-t)\" argument.${NC}"
         usage
@@ -366,6 +366,8 @@ function fullServiceEnumTCP(){
         80) # HTTP        
             dirsearch -u http://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
             spinner "dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)" 2
+            dirsearch -u http://$target:$1/cgi-bin/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-cgi-bin-tcp-$1.txt -e sh,pl -f &> /dev/null &
+            spinner "dirsearch - cgi-bin (sh,pl)" 2            
         ;;            
         443) # HTTPS
             dirsearch -u https://$target:$1/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$1.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
@@ -487,7 +489,7 @@ main() {
             if [ -n "$tcpPorts" ]; then
                 echo ''; stageProcessTitle "basic enumeration (tcp ports)" 1; echo ''
                 for port in "${tcpPorts[@]}"; do
-                    basicServiceEnumTCP $port
+                    basicServiceEnumTCP $port                    
                 done
             fi
 
