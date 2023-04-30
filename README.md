@@ -5,16 +5,17 @@ Herramienta de enumeración automatizada.
 ## Uso
 
 ```bash
-automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
+automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>] [-p <PORT>] [-u]
 ```
 
 ## Ejemplos de utilización
 
 ```bash
-./automatedEnum.sh -t X.X.X.X
-./automatedEnum.sh -t X.X.X.X -s HTTP
-./automatedEnum.sh -t X.X.X.X -m full
-./automatedEnum.sh -t X.X.X.X -m vuln -s SMB
+automatedEnum.sh -t X.X.X.X
+automatedEnum.sh -t X.X.X.X -s HTTP
+automatedEnum.sh -t X.X.X.X -s HTTP -p 8080
+automatedEnum.sh -t X.X.X.X -m full
+automatedEnum.sh -t X.X.X.X -m vuln -s SMB
 ```
 
 ## Argumentos
@@ -23,6 +24,8 @@ automatedEnum.sh -t <TARGET> [-m <MODE>] [-s <SERVICE>]
 -t <TARGET>     Target/Host IP address
 -m <MODE>       Mode: basic|vuln|full (default: basic)
 -s <SERVICE>    Service name: FTP|HTTP|HTTPS|RDP|REDIS|SMB|SMTP|SNMP|SSH
+-p <PORT>       Port number
+-u              UDP port scanning and enumeration (default only TCP ports)
 -h              Shows instructions on how to use the tool
 ```
 
