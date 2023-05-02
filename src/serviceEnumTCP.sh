@@ -54,7 +54,7 @@ function ftpServiceEnumTCP(){
 
     case $mode in        
         basic)
-            nmap -sV -p $port --script="banner,ftp* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            nmap -sV -$threadsNmap -p $port --script="banner,ftp* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
             spinner "Nmap" 2
         ;;
         full)
@@ -71,7 +71,7 @@ function sshServiceEnumTCP(){
 
     case $mode in        
         basic)
-            nmap -sV -p $port --script="banner,ssh* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            nmap -sV -$threadsNmap -p $port --script="banner,ssh* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
             spinner "Nmap" 2
         ;;
         full)
@@ -88,15 +88,15 @@ function smtpServiceEnumTCP(){
 
     case $mode in        
         basic)
-            nmap -sV -p $port --script="banner,smtp* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            nmap -sV -$threadsNmap -p $port --script="banner,smtp* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
             spinner "Nmap" 2
             smtp-user-enum -M VRFY -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $port | tee $mainDirectory/$service/smtp-user-enum-vrfy-top-tcp-$port.txt &> /dev/null &
             spinner "smtp-user-enum - VRFY" 2
         ;;
         full)
-            smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $port | tee $mainDirectory/$serviceName/smtp-user-enum-expn-top-tcp-$port.txt &> /dev/null &
+            smtp-user-enum -M EXPN -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $port | tee $mainDirectory/$service/smtp-user-enum-expn-top-tcp-$port.txt &> /dev/null &
             spinner "smtp-user-enum - EXPN" 2
-            smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $port | tee $mainDirectory/$serviceName/smtp-user-enum-rcpt-top-tcp-$port.txt &> /dev/null &
+            smtp-user-enum -M RCPT -U /usr/share/seclists/Usernames/top-usernames-shortlist.txt -t $target -p $port | tee $mainDirectory/$service/smtp-user-enum-rcpt-top-tcp-$port.txt &> /dev/null &
             spinner "smtp-user-enum - RCPT" 2                     
         ;;        
     esac
@@ -109,19 +109,27 @@ function httpServiceEnumTCP(){
     local service=$3
 
     case $mode in        
-        basic)
-            nmap -sV -p $port --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
-            spinner "Nmap" 2
-            whatweb -v -a 1 http://$target:$port/ 2>/dev/null | tee $mainDirectory/$service/whapweb-tcp-$port.txt &> /dev/null &
-            spinner "WhatWeb" 2
-            dirsearch -u http://$target:$port/ -o $(pwd)/$mainDirectory/$service/dirsearch-tcp-$port.txt &> /dev/null &
+        basic)            
+            #whatweb -v -a 1 https://$target:$port/ | tee $mainDirectory/$service/whapweb-tcp-$port.txt &> /dev/null &
+            #spinner "WhatWeb" 2
+            nmap -sV -$threadsNmap -p $port --script="http-enum" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            spinner "Nmap" 2            
+            dirsearch -u http://$target:$port/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-tcp-$port.txt $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
             spinner "dirsearch" 2
         ;;
         full)
-            dirsearch -u http://$target:$port/ -o $(pwd)/$mainDirectory/$service/dirsearch-extension-tcp-$port.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
-            spinner "dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)" 2
-            dirsearch -u http://$target:$port/cgi-bin/ -o $(pwd)/$mainDirectory/$service/dirsearch-cgi-bin-tcp-$port.txt -e sh,pl -f &> /dev/null &
-            spinner "dirsearch - cgi-bin (sh,pl)" 2             
+            nmap -sV -$threadsNmap -p $port --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            spinner "Nmap" 2
+            wfuzz -c -z file,$wordlistDirectories --hc 301,404 -t $threadsWfuzz -f $mainDirectory/$service/wfuzz-directories-tcp-$port.txt,raw --req-delay $reqDelayWfuzz --conn-delay $connDelayWfuzz $(if [ "$enableProxy" = true ]; then echo "-p $ipProxy:$portProxy:HTTP"; fi) http://$target:$port/FUZZ/ &> /dev/null &
+            spinner "Wfuzz - Directories" 2
+            wfuzz -c -z file,$wordlistFiles --hc 301,404 -t $threadsWfuzz -f $mainDirectory/$service/wfuzz-files-tcp-$port.txt,raw --req-delay $reqDelayWfuzz --conn-delay $connDelayWfuzz $(if [ "$enableProxy" = true ]; then echo "-p $ipProxy:$portProxy:HTTP"; fi) http://$target:$port/FUZZ &> /dev/null &
+            spinner "Wfuzz - Files" 2
+            wfuzz -c -z file,$wordlistWords -z list,$wordlistExtensions --hc 301,404 -t $threadsWfuzz -f $mainDirectory/$service/wfuzz-extensions-$wordlistExtensions-tcp-$port.txt,raw --req-delay $reqDelayWfuzz --conn-delay $connDelayWfuzz $(if [ "$enableProxy" = true ]; then echo "-p $ipProxy:$portProxy:HTTP"; fi) http://$target:$port/FUZZ.FUZ2Z &> /dev/null &
+            spinner "Wfuzz - Extensions (${wordlistExtensions/'-'/','})" 2
+            #dirsearch -u http://$target:$port/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-extension-tcp-$port.txt -e php,aspx,jsp,html,js,txt,bak -f $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
+            #spinner "dirsearch - Extensions (php,aspx,jsp,html,js,txt,bak)" 2
+            #dirsearch -u http://$target:$port/cgi-bin/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-cgi-bin-tcp-$port.txt -e sh,pl -f $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
+            #spinner "dirsearch - cgi-bin (sh,pl)" 2            
         ;;        
     esac
 }
@@ -134,16 +142,26 @@ function httpsServiceEnumTCP(){
 
     case $mode in        
         basic)
-            nmap -sV -p $port --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
-            spinner "Nmap" 2
-            whatweb -v -a 1 https://$target:$port/ | tee $mainDirectory/$service/whapweb-tcp-$port.txt &> /dev/null &
-            spinner "WhatWeb" 2
-            dirsearch -u https://$target:$port/ -o $(pwd)/$mainDirectory/$service/dirsearch-tcp-$port.txt &> /dev/null &
+            #whatweb -v -a 1 https://$target:$port/ | tee $mainDirectory/$service/whapweb-tcp-$port.txt &> /dev/null &
+            #spinner "WhatWeb" 2
+            nmap -sV -$threadsNmap -p $port --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            spinner "Nmap" 2            
+            dirsearch -u https://$target:$port/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-tcp-$port.txt $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
             spinner "dirsearch" 2
         ;;
         full)
-            dirsearch -u https://$target:$port/ -o $(pwd)/$mainDirectory/$serviceName/dirsearch-extension-tcp-$port.txt -e php,aspx,jsp,html,js,txt,bak -f &> /dev/null &
-            spinner "dirsearch - Extension (php,aspx,jsp,html,js,txt,bak)" 2           
+            nmap -sV -$threadsNmap -p $port --script="banner,http* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            spinner "Nmap" 2
+            wfuzz -c -z file,$wordlistDirectories --hc 301,404 -t $threadsWfuzz -f $mainDirectory/$service/wfuzz-directories-tcp-$port.txt,raw --req-delay $reqDelayWfuzz --conn-delay $connDelayWfuzz $(if [ "$enableProxy" = true ]; then echo "-p $ipProxy:$portProxy:HTTP"; fi) https://$target:$port/FUZZ/ &> /dev/null &
+            spinner "Wfuzz - Directories" 2
+            wfuzz -c -z file,$wordlistFiles --hc 301,404 -t $threadsWfuzz -f $mainDirectory/$service/wfuzz-files-tcp-$port.txt,raw --req-delay $reqDelayWfuzz --conn-delay $connDelayWfuzz $(if [ "$enableProxy" = true ]; then echo "-p $ipProxy:$portProxy:HTTP"; fi) https://$target:$port/FUZZ &> /dev/null &
+            spinner "Wfuzz - Files" 2
+            wfuzz -c -z file,$wordlistWords -z list,$wordlistExtensions --hc 301,404 -t $threadsWfuzz -f $mainDirectory/$service/wfuzz-extensions-$wordlistExtensions-tcp-$port.txt,raw --req-delay $reqDelayWfuzz --conn-delay $connDelayWfuzz $(if [ "$enableProxy" = true ]; then echo "-p $ipProxy:$portProxy:HTTP"; fi) https://$target:$port/FUZZ.FUZ2Z &> /dev/null &
+            spinner "Wfuzz - Extensions (${wordlistExtensions/'-'/','})" 2
+            #dirsearch -u https://$target:$port/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-extension-tcp-$port.txt -e php,aspx,jsp,html,js,txt,bak -f $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
+            #spinner "dirsearch - Extensions (php,aspx,jsp,html,js,txt,bak)" 2
+            #dirsearch -u https://$target:$port/cgi-bin/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-cgi-bin-tcp-$port.txt -e sh,pl -f $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
+            #spinner "dirsearch - cgi-bin (sh,pl)" 2
         ;;        
     esac
 }
@@ -154,11 +172,9 @@ function smbServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    echo $service
-
     case $mode in        
         basic)
-            nmap -sV -p 139,445 --script="banner,smb* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-139-445.txt &> /dev/null &
+            nmap -sV -$threadsNmap -p 139,445 --script="banner,smb* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-139-445.txt &> /dev/null &
             spinner "Nmap" 2
             smbclient -N -L $target --option='client min protocol=NT1' 2>/dev/null | tee $mainDirectory/$service/smbclient.txt &> /dev/null &
             spinner "smbclient" 2
@@ -166,7 +182,7 @@ function smbServiceEnumTCP(){
             spinner "SMBMap" 2
         ;;
         full)
-            smbmap -R -H $target | tee $mainDirectory/$serviceName/smbmap-recursive.txt &> /dev/null &
+            smbmap -R -H $target | tee $mainDirectory/$service/smbmap-recursive.txt &> /dev/null &
             spinner "SMBMap - Recursive" 2           
         ;;        
     esac
@@ -180,7 +196,7 @@ function rdpServiceEnumTCP(){
 
     case $mode in        
         basic)
-            nmap -sV -p $port --script="banner,rdp* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            nmap -sV -$threadsNmap -p $port --script="banner,rdp* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
             spinner "Nmap" 2
         ;;
         full)
@@ -195,9 +211,9 @@ function redisServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    case $mode in        
+    case $mode in
         basic)
-            nmap -sV -p $port --script="banner,redis* and not ($noCategoriesNmapScript)" -Pn $target 2>/dev/null | tee $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
+            nmap -sV -$threadsNmap -p $port --script="banner,redis* and not ($noCategoriesNmapScript)" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
             spinner "Nmap" 2
         ;;
         full)

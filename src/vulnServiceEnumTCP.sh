@@ -51,7 +51,7 @@ function ftpVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
+    nmap -$threadsNmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
     spinner "Nmap" 2
 }
 
@@ -61,7 +61,7 @@ function sshVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
+    nmap -$threadsNmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
     spinner "Nmap" 2
 }
 
@@ -71,7 +71,7 @@ function smtpVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
+    nmap -$threadsNmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
     spinner "Nmap" 2
 }
 
@@ -81,7 +81,7 @@ function httpVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
+    nmap -$threadsNmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
     spinner "Nmap" 2
 }
 
@@ -91,7 +91,7 @@ function smbVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p 139,445 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-139-445.txt &> /dev/null &
+    nmap -$threadsNmap -p 139,445 --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-139-445.txt &> /dev/null &
     spinner "Nmap" 2
 }
 
@@ -101,7 +101,7 @@ function rdpVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
+    nmap -$threadsNmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
     spinner "Nmap" 2
 }
 
@@ -111,6 +111,6 @@ function redisVulnServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    nmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
+    nmap -$threadsNmap -p $port --script=vuln -Pn $target -oN $mainDirectory/$vulnDirectory/nmap-$service-tcp-$port.txt &> /dev/null &
     spinner "Nmap" 2
 }

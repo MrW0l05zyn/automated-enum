@@ -12,7 +12,7 @@ function spinner(){
         1) indentation=$indentation1;;
         2) indentation=$indentation2;;
     esac
-
+    
     while kill -0 $pid 2> /dev/null; do
         local temp=${spinstr#?}
         printf "${PURPLE}$indentation[%c] $info${NC}" "$spinstr"

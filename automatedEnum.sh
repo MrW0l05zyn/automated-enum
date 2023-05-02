@@ -6,18 +6,18 @@ mode='basic'
 modes=(basic vuln full)
 service=''
 services=(FTP HTTP HTTPS RDP REDIS SMB SMTP SNMP SSH)
-udpPortEnumeration=0
-elevatedPrivileges=0
+udpPortEnumeration=false
+elevatedPrivileges=false
 port=''
 TCPPortsTarget=''
 UDPPortsTarget=''
 parameterCounter=0
-toolName='automatedEnum.sh'
+toolName='automatedEnum'
 mainSourceCodeDirectory=$(dirname $(readlink -f $0))
 mainDirectory='automatedEnum'
 vulnDirectory='vulns'
 workingDirectory='.working'
-version='0.2'
+version='0.3'
 indentation1='   '
 indentation2='      '
 noCategoriesNmapScript='brute or broadcast or dos or external or fuzzer'
@@ -37,11 +37,13 @@ BGREEN='\033[1;32m'
 source $mainSourceCodeDirectory/src/banner.sh
 source $mainSourceCodeDirectory/src/nmap.sh
 source $mainSourceCodeDirectory/src/parameters.sh
-source $mainSourceCodeDirectory/src/spinner.sh
-source $mainSourceCodeDirectory/src/utilities.sh
 source $mainSourceCodeDirectory/src/serviceEnumTCP.sh
 source $mainSourceCodeDirectory/src/serviceEnumUDP.sh
 source $mainSourceCodeDirectory/src/vulnServiceEnumTCP.sh
+source $mainSourceCodeDirectory/src/settings.sh
+source $mainSourceCodeDirectory/src/spinner.sh
+source $mainSourceCodeDirectory/src/utilities.sh
+source $mainSourceCodeDirectory/src/wordlists.sh
 
 # parámetros
 while getopts ":t:m:s:p:uh" arg; do
@@ -65,7 +67,7 @@ while getopts ":t:m:s:p:uh" arg; do
             let parameterCounter+=1
         ;;
         u) # UDP ports
-            udpPortEnumeration=1
+            udpPortEnumeration=true
         ;;                
         h | *) # usage
             usage
@@ -80,13 +82,13 @@ main() {
 
     # validación de privilegios de root para escaneo y enumeración de puertos UDP
     if [ "$(id -u)" -eq 0 ]; then    
-        elevatedPrivileges=1        
-    elif [ "$udpPortEnumeration" -eq 1 ]; then
+        elevatedPrivileges=true        
+    elif [ "$udpPortEnumeration" = true ]; then
         echo -e "\n${YELLOW}Elevated privileges are required to scan and enumerate UDP ports.\n${NC}"
         if ! sudo true; then
             exit 1
         else
-            elevatedPrivileges=1
+            elevatedPrivileges=true
         fi
     fi    
 

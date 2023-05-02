@@ -27,7 +27,7 @@ function nmapScan(){
     echo ''; stageProcessTitle "Port Scan"
 
     # TCP all port scan
-    if [ "$elevatedPrivileges" -eq 1 ]; then 
+    if [ "$elevatedPrivileges" = true ]; then 
         sudo nmap -sS -p- --open -n --min-rate 5000 -Pn $target -oN $mainDirectory/$directory/all-tcp-ports.txt -oG $mainDirectory/$workingDirectory/tcp-ports &> /dev/null &        
     else
         nmap -p- --open -n --min-rate 5000 -Pn $target -oN $mainDirectory/$directory/all-tcp-ports.txt -oG $mainDirectory/$workingDirectory/tcp-ports &> /dev/null &
@@ -44,7 +44,7 @@ function nmapScan(){
         echo ''; echo -e "$indentation2${YELLOW}TCP ports not found.${NC}"
     fi
 
-    if [ "$udpPortEnumeration" -eq 1 ]; then    
+    if [ "$udpPortEnumeration" = true ]; then
         # UDP main port scan    
         sudo nmap -sU --top-port 10 -n -Pn $target -oN $mainDirectory/$directory/main-udp-ports.txt -oG $mainDirectory/$workingDirectory/udp-ports &> /dev/null &
         echo ''; spinner "[Nmap - UDP main port scan]" 1
@@ -62,7 +62,7 @@ function nmapScan(){
 
     # identificación de servicios TCP
     if [ -n "$TCPPortsTarget" ]; then
-        nmap -sC -sV -p $TCPPortsTarget -Pn $target -oN $mainDirectory/$directory/tcp-ports-services.txt &> /dev/null &
+        nmap -sC -sV -$threadsNmap -p $TCPPortsTarget -Pn $target -oN $mainDirectory/$directory/tcp-ports-services.txt &> /dev/null &
         echo ''; spinner "[Nmap - Identification of services and versions of TCP ports]" 1
         echo ''; cat $mainDirectory/$directory/tcp-ports-services.txt | grep -v '#' | grep 'PORT\|[0-9]/tcp' | sed "s/.*/$indentation2&/g"
     fi
