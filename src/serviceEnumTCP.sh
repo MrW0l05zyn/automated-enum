@@ -95,9 +95,6 @@ function httpServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    #whatweb -v -a 1 https://$target:$port/ | tee $mainDirectory/$service/whapweb-tcp-$port.txt &> /dev/null &
-    #spinner "WhatWeb" 2
-
     # Nmap según modo
     if [ $mode = "basic" ]; then  
         nmap -sV -$threadsNmap -p $port --script="http-enum" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
@@ -108,6 +105,10 @@ function httpServiceEnumTCP(){
     fi
     
     # todos los modos
+    whatweb -v -a 1 http://$target:$port/ > $mainDirectory/$service/whapweb-tcp-$port.txt 2>/dev/null &
+    spinner "WhatWeb" 2    
+    echo "http://$target:$port/" | hakrawler | sort -u > $mainDirectory/$service/hakrawler-tcp-$port.txt 2>/dev/null &
+    spinner "hakrawler" 2
     dirsearch -u http://$target:$port/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-tcp-$port.txt $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
     spinner "dirsearch" 2
 
@@ -132,9 +133,6 @@ function httpsServiceEnumTCP(){
     local mode=$2
     local service=$3
 
-    #whatweb -v -a 1 https://$target:$port/ | tee $mainDirectory/$service/whapweb-tcp-$port.txt &> /dev/null &
-    #spinner "WhatWeb" 2
-
     # Nmap según modo
     if [ $mode = "basic" ]; then  
         nmap -sV -$threadsNmap -p $port --script="http-enum" -Pn $target -oN $mainDirectory/$service/nmap-tcp-$port.txt &> /dev/null &
@@ -145,8 +143,12 @@ function httpsServiceEnumTCP(){
     fi
 
     # todos los modos
+    whatweb -v -a 1 https://$target:$port/ > $mainDirectory/$service/whapweb-tcp-$port.txt 2>/dev/null &
+    spinner "WhatWeb" 2     
+    echo "https://$target:$port/" | hakrawler | sort -u > $mainDirectory/$service/hakrawler-tcp-$port.txt 2>/dev/null &
+    spinner "hakrawler" 2
     dirsearch -u https://$target:$port/ -t $threadsDirsearch -o $(pwd)/$mainDirectory/$service/dirsearch-tcp-$port.txt $(if [ "$enableProxy" = true ]; then echo "--proxy $ipProxy:$portProxy"; fi) &> /dev/null &
-    spinner "dirsearch" 2
+    spinner "dirsearch" 2    
 
     # sólo modo full
     if [ $mode = "full" ]; then

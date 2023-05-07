@@ -40,6 +40,7 @@ sudo ln -s $(pwd)/automated-enum/automatedEnum.sh /usr/local/bin/automatedEnum
 ### Dependencias
 
 + [dirsearch](https://github.com/maurosoria/dirsearch)
++ [hakrawler](https://github.com/hakluke/hakrawler)
 + [nmap](https://nmap.org/)
 + [seclists](https://github.com/danielmiessler/SecLists)
 + [smbclient](https://www.samba.org/)
@@ -53,5 +54,5 @@ sudo ln -s $(pwd)/automated-enum/automatedEnum.sh /usr/local/bin/automatedEnum
 
 ```bash
 sudo apt update
-sudo apt install dirsearch nmap seclists smbclient smbmap smtp-user-enum snmp-check wfuzz whatweb
+sudo apt install dirsearch hakrawler nmap seclists smbclient smbmap smtp-user-enum snmp-check wfuzz whatweb
 ```
