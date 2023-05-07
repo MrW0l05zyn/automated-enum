@@ -102,7 +102,7 @@ main() {
     directoryCreation $workingDirectory
 
     # creación de directorio de vulnerabilidades
-    if [ $mode = 'full' ] || [ $mode = 'vuln' ]; then
+    if [ $mode = "full" ] || [ $mode = "vuln" ]; then
         directoryCreation $vulnDirectory
     fi
 

@@ -38,15 +38,9 @@ function snmpServiceEnumUDP(){
     local mode=$2
     local service=$3
 
-    case $mode in        
-        basic)
-            sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$service/nmap-snmp-udp-161-162.txt &> /dev/null &
-            spinner "Nmap" 2
-            snmp-check -p 161 $target | tee $mainDirectory/$service/snmp-check-udp-161.txt &> /dev/null &
-            spinner "snmp-check" 2
-        ;;
-        full)
-
-        ;;        
-    esac
+    # todos los modos
+    sudo nmap -sC -sV -sU -p 161,162 -Pn $target -oN $mainDirectory/$service/nmap-snmp-udp-161-162.txt &> /dev/null &
+    spinner "Nmap" 2
+    snmp-check -p 161 $target | tee $mainDirectory/$service/snmp-check-udp-161.txt &> /dev/null &
+    spinner "snmp-check" 2
 }

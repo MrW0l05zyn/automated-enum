@@ -7,13 +7,13 @@ secListsDirectory='/usr/share/seclists'
 wordlistSmallDirectories=$secListsDirectory/Discovery/Web-Content/raft-small-directories.txt
 wordlistMediumDirectories=$secListsDirectory/Discovery/Web-Content/raft-medium-directories.txt
 wordlistLargeDirectories=$secListsDirectory/Discovery/Web-Content/raft-large-directories.txt
-wordlistDirectories=$wordlistSmallDirectories
+wordlistDirectories=$wordlistMediumDirectories
 
 # files
 wordlistSmallFiles=$secListsDirectory/Discovery/Web-Content/raft-small-files.txt
 wordlistMediumFiles=$secListsDirectory/Discovery/Web-Content/raft-medium-files.txt
 wordlistLargeFiles=$secListsDirectory/Discovery/Web-Content/raft-large-files.txt
-wordlistFiles=$wordlistSmallFiles
+wordlistFiles=$wordlistMediumDirectories
 
 # words
 wordlistSmallWords=$secListsDirectory/Discovery/Web-Content/raft-small-words.txt
